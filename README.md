@@ -5,3 +5,8 @@
 
 # docker-deploy-bamboo-go
 Docker Compose Deployment Script for Bamboo, written in Go
+
+## Usage
+Run the executable with the `-help` flag to see the necessary parameters.
+
+The **TEST** operations requires the installation of [service-discovery](https://github.com/herzog31/service-discovery) on your deployment target.
