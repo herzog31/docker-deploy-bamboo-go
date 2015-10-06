@@ -58,9 +58,11 @@ func main() {
 	if err = c.runComposition(); err != nil {
 		log.Fatal(err)
 	}
+	if err = c.serviceDiscoveryTest(); err != nil {
+		log.Fatal(err)
+	}
 
 }
 
-// TODO(mjb): Test, Service Discovery
 // TODO(mjb): Remove working dir, cleanup, disconnect
 // TODO(mjb): Travis Build

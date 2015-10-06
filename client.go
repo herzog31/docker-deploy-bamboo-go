@@ -6,10 +6,13 @@ import (
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 	"io"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"path"
 	"strings"
+	"time"
 )
 
 type DockerDeployClient struct {
@@ -212,4 +215,34 @@ func (c *DockerDeployClient) buildComposition() error {
 func (c *DockerDeployClient) runComposition() error {
 	_, err := c.executeCommand(fmt.Sprintf("cd %v && sudo -S docker-compose -p %v -f %v up -d", c.RemoteWorkingDir, c.ProjectName, c.ComposeFile), true)
 	return err
+}
+
+func (c *DockerDeployClient) serviceDiscoveryTest() error {
+	iterations := 0
+	var response []byte
+	ticks := time.Duration(c.StartTime/5) * time.Second
+
+	for _ = range time.Tick(ticks) {
+		iterations += 1
+		if iterations >= 6 {
+			break
+		}
+
+		res, err := http.Get(fmt.Sprintf("http://%v:%d/api/projectUp/%v", c.SSHHost, c.ServiceDiscoveryPort, c.ProjectName))
+		if err != nil {
+			log.Printf("#%d: Service Discovery is not reachable: %v", iterations, err.Error())
+			continue
+		}
+
+		response, err = ioutil.ReadAll(res.Body)
+		res.Body.Close()
+		if err == nil && string(response) == "true" {
+			log.Printf("#%d: Composition was started: %d %v", iterations, res.StatusCode, string(response))
+			return nil
+		}
+
+		log.Printf("#%d: Composition could not be started: %d %v", iterations, res.StatusCode, string(response))
+	}
+
+	return errors.New("Service Discovery test failed.")
 }
