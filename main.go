@@ -32,13 +32,14 @@ func main() {
 	if err = c.connect(); err != nil {
 		log.Fatal(err)
 	}
+	defer c.disconnect()
 	if err = c.prepareRemoteWorkdir(); err != nil {
 		log.Fatal(err)
 	}
 	if err = c.copyArtifact(); err != nil {
 		log.Fatal(err)
 	}
-	if err = c.disconnect(); err != nil {
+	if err = c.unzipArtifact(); err != nil {
 		log.Fatal(err)
 	}
 
@@ -46,8 +47,7 @@ func main() {
 
 }
 
-// TODO(mjb): Check if unzip, docker & docker-compose installed (which)
-// TODO(mjb): Unzip, delete artifact
+// TODO(mjb): Check if docker & docker-compose installed (which)
 // TODO(mjb): Compose stop, clear
 // TODO(mjb): Compose build, run
 // TODO(mjb): Test, Service Discovery

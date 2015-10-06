@@ -102,6 +102,19 @@ func (c *DockerDeployClient) findLocalArtifact() error {
 	return errors.New(fmt.Sprintf("Could not find local artifact in working directory %v", c.LocalWorkingDir))
 }
 
+func (c *DockerDeployClient) unzipArtifact() error {
+	output, err := c.executeCommand("which unzip")
+	if err != nil {
+		return errors.New(fmt.Sprintf("Unzip not installed. %v", output))
+	}
+
+	output, err = c.executeCommand(fmt.Sprintf("cd %v && unzip -o %v && rm %v", c.RemoteWorkingDir, path.Base(c.LocalArtifact), path.Base(c.LocalArtifact)))
+	if err != nil {
+		return errors.New(fmt.Sprintf("Could not unzip artifact: %v %v", err.Error(), output))
+	}
+	return nil
+}
+
 func (c *DockerDeployClient) copyArtifact() error {
 	err := c.copyFile(c.LocalArtifact, path.Join(c.RemoteWorkingDir, path.Base(c.LocalArtifact)))
 	return err
@@ -137,7 +150,7 @@ func (c *DockerDeployClient) copyFile(source string, target string) error {
 
 func (c *DockerDeployClient) prepareRemoteWorkdir() error {
 	command := fmt.Sprintf("mkdir -p %s && cd %s && pwd && rm -rf *", c.RemoteWorkingDir, c.RemoteWorkingDir)
-	output, err := c.executeCommand(command)
+	_, err := c.executeCommand(command)
 	if err != nil {
 		return err
 	}
