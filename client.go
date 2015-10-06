@@ -81,6 +81,7 @@ func (c *DockerDeployClient) findLocalArtifact() error {
 		if path.Ext(c.LocalArtifact) != ".zip" {
 			return errors.New(fmt.Sprintf("Given artifact %v is no zip file.", c.LocalArtifact))
 		}
+		log.Printf("Local artifact found: %v", c.LocalArtifact)
 		return nil
 	}
 
@@ -108,6 +109,7 @@ func (c *DockerDeployClient) findLocalArtifact() error {
 			fpath := path.Join(c.LocalWorkingDir, file.Name())
 			if path.Ext(fpath) == ".zip" {
 				c.LocalArtifact = fpath
+				log.Printf("Local artifact found: %v", c.LocalArtifact)
 				return nil
 			}
 		}
@@ -245,4 +247,17 @@ func (c *DockerDeployClient) serviceDiscoveryTest() error {
 	}
 
 	return errors.New("Service Discovery test failed.")
+}
+
+func (c *DockerDeployClient) remoteCleanUp() error {
+	if c.RemoteWorkingDir == "" {
+		return errors.New("No remote working directory specified.")
+	}
+
+	command := fmt.Sprintf("rm -rf %s", c.RemoteWorkingDir)
+	_, err := c.executeCommand(command, false)
+	if err != nil {
+		return err
+	}
+	return nil
 }

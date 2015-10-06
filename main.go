@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"strings"
 )
 
 func main() {
@@ -26,43 +27,66 @@ func main() {
 
 	var err error
 
+	defer func() {
+		if p := recover(); p != nil {
+			if err = c.remoteCleanUp(); err != nil {
+				log.Print(err)
+			}
+			c.disconnect()
+			log.Fatalf("Deployment aborted: %v", p)
+		}
+	}()
+
 	if err = c.findLocalArtifact(); err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("Local artifact found: %v", c.LocalArtifact)
 	if err = c.connect(); err != nil {
 		log.Fatal(err)
 	}
-	defer c.disconnect()
 	if err = c.prepareRemoteWorkdir(); err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	if err = c.copyArtifact(); err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	if err = c.unzipArtifact(); err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	if err = c.checkDockerInstallation(); err != nil {
+		panic(err)
+	}
+	if strings.Contains(c.Mode, "CLEAR") {
+		if err = c.stopComposition(); err != nil {
+			panic(err)
+		}
+		if err = c.removeComposition(); err != nil {
+			panic(err)
+		}
+	}
+	if strings.Contains(c.Mode, "DEPLOY") {
+		if err = c.buildComposition(); err != nil {
+			panic(err)
+		}
+		if err = c.runComposition(); err != nil {
+			panic(err)
+		}
+	}
+	if strings.Contains(c.Mode, "TEST") {
+		if err = c.serviceDiscoveryTest(); err != nil {
+			panic(err)
+		}
+	}
+	if strings.Contains(c.Mode, "REMOVE") {
+		if err = c.stopComposition(); err != nil {
+			panic(err)
+		}
+		if err = c.removeComposition(); err != nil {
+			panic(err)
+		}
+	}
+	if err = c.remoteCleanUp(); err != nil {
 		log.Fatal(err)
 	}
-	if err = c.stopComposition(); err != nil {
-		log.Fatal(err)
-	}
-	if err = c.removeComposition(); err != nil {
-		log.Fatal(err)
-	}
-	if err = c.buildComposition(); err != nil {
-		log.Fatal(err)
-	}
-	if err = c.runComposition(); err != nil {
-		log.Fatal(err)
-	}
-	if err = c.serviceDiscoveryTest(); err != nil {
-		log.Fatal(err)
-	}
+	c.disconnect()
 
 }
-
-// TODO(mjb): Remove working dir, cleanup, disconnect
-// TODO(mjb): Travis Build

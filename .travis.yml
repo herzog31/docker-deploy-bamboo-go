@@ -1,0 +1,21 @@
+sudo: required
+language: go
+go: 
+ - 1.5.1
+env:
+  global:
+    - "PATH=/home/travis/gopath/bin:$PATH" 
+    - OS_ARCH="darwin/amd64 linux/amd64 linux/arm windows/amd64"
+before_install:
+  - go get github.com/mitchellh/gox
+after_success:
+  - gox -osarch="$OS_ARCH" -output "dist/{{.OS}}_{{.Arch}}_{{.Dir}}"
+deploy:
+  provider: releases
+  api-key: "$GITHUB_TOKEN"
+  file_glob: true
+  file:
+    - "dist/*"
+  skip_cleanup: true
+  on:
+    tags: true
