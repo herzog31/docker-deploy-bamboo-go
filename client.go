@@ -4,26 +4,29 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
+	"io"
 	"log"
 	"os"
 	"path"
 )
 
 type DockerDeployClient struct {
-	Mode             string
-	SSHPort          int
-	SSHUser          string
-	SSHHost          string
-	SSHPassword      string
-	ProjectName      string
-	ComposeFile      string
-	StartTime        int
-	RemoteWorkingDir string
-	LocalWorkingDir  string
-	LocalArtifact    string
-	config           *ssh.ClientConfig
-	sshClient        *ssh.Client
+	Mode                 string
+	SSHPort              int
+	SSHUser              string
+	SSHHost              string
+	SSHPassword          string
+	ProjectName          string
+	ComposeFile          string
+	StartTime            int
+	RemoteWorkingDir     string
+	LocalWorkingDir      string
+	LocalArtifact        string
+	ServiceDiscoveryPort int
+	config               *ssh.ClientConfig
+	sshClient            *ssh.Client
 }
 
 func (c *DockerDeployClient) connect() error {
@@ -99,12 +102,44 @@ func (c *DockerDeployClient) findLocalArtifact() error {
 	return errors.New(fmt.Sprintf("Could not find local artifact in working directory %v", c.LocalWorkingDir))
 }
 
+func (c *DockerDeployClient) copyArtifact() error {
+	err := c.copyFile(c.LocalArtifact, path.Join(c.RemoteWorkingDir, path.Base(c.LocalArtifact)))
+	return err
+}
+
+func (c *DockerDeployClient) copyFile(source string, target string) error {
+	sftp, err := sftp.NewClient(c.sshClient)
+	if err != nil {
+		log.Fatalf("Could not initialize SFTP connection: %v", err)
+	}
+	defer sftp.Close()
+
+	tf, err := sftp.Create(target)
+	if err != nil {
+		return err
+	}
+	defer tf.Close()
+
+	sf, err := os.Open(source)
+	if err != nil {
+		return err
+	}
+	defer sf.Close()
+
+	n, err := io.Copy(tf, sf)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Artifact from %v to %v copied. %v Bytes transferred.", source, target, n)
+	return nil
+}
+
 func (c *DockerDeployClient) prepareRemoteWorkdir() error {
 	command := fmt.Sprintf("mkdir -p %s && cd %s && pwd && rm -rf *", c.RemoteWorkingDir, c.RemoteWorkingDir)
 	output, err := c.executeCommand(command)
 	if err != nil {
 		return err
 	}
-	log.Print(output)
 	return nil
 }

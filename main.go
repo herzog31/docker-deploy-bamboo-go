@@ -20,6 +20,7 @@ func main() {
 	flag.StringVar(&c.RemoteWorkingDir, "remoteWorkingDir", "", "Absolute path of remote working directory, where the build artifact is copied and executed")
 	flag.StringVar(&c.LocalWorkingDir, "localWorkingDir", "", "Absolute or relative path to local working directory, where the build artifact is stored")
 	flag.StringVar(&c.LocalArtifact, "artifact", "", "Relative or absolute path to zip file that contains the composition")
+	flag.IntVar(&c.ServiceDiscoveryPort, "serviceDiscoveryPort", 8080, "Port for access to the service discovery API")
 	flag.Parse()
 
 	var err error
@@ -34,6 +35,9 @@ func main() {
 	if err = c.prepareRemoteWorkdir(); err != nil {
 		log.Fatal(err)
 	}
+	if err = c.copyArtifact(); err != nil {
+		log.Fatal(err)
+	}
 	if err = c.disconnect(); err != nil {
 		log.Fatal(err)
 	}
@@ -42,7 +46,8 @@ func main() {
 
 }
 
-// TODO(mjb): Copy, unzip, delete artifact
+// TODO(mjb): Check if unzip, docker & docker-compose installed (which)
+// TODO(mjb): Unzip, delete artifact
 // TODO(mjb): Compose stop, clear
 // TODO(mjb): Compose build, run
 // TODO(mjb): Test, Service Discovery
