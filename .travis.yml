@@ -1,5 +1,6 @@
 sudo: required
 language: go
+sudo: false
 go: 
  - 1.5.1
 env:
