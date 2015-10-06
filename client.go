@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"github.com/pkg/sftp"
@@ -10,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"strings"
 )
 
 type DockerDeployClient struct {
@@ -25,6 +25,7 @@ type DockerDeployClient struct {
 	LocalWorkingDir      string
 	LocalArtifact        string
 	ServiceDiscoveryPort int
+	ClearVolumes         bool
 	config               *ssh.ClientConfig
 	sshClient            *ssh.Client
 }
@@ -49,19 +50,24 @@ func (c *DockerDeployClient) disconnect() error {
 	return c.sshClient.Close()
 }
 
-func (c *DockerDeployClient) executeCommand(command string) (string, error) {
+func (c *DockerDeployClient) executeCommand(command string, sudo bool) (string, error) {
 	session, err := c.sshClient.NewSession()
 	if err != nil {
 		return "", err
 	}
 	defer session.Close()
 
-	var b bytes.Buffer
-	session.Stdout = &b
-	if err := session.Run(command); err != nil {
-		return "", err
+	if sudo {
+		session.Stdin = strings.NewReader(fmt.Sprintf("%v\n", c.SSHPassword))
 	}
-	return b.String(), nil
+
+	output, err := session.CombinedOutput(command)
+	log.Printf("Command: %v", command)
+	log.Printf("Output: %v", string(output))
+	if err != nil {
+		return "", errors.New(fmt.Sprintf("%v: %v", err.Error(), string(output)))
+	}
+	return string(output), nil
 }
 
 func (c *DockerDeployClient) findLocalArtifact() error {
@@ -73,6 +79,10 @@ func (c *DockerDeployClient) findLocalArtifact() error {
 			return errors.New(fmt.Sprintf("Given artifact %v is no zip file.", c.LocalArtifact))
 		}
 		return nil
+	}
+
+	if c.LocalWorkingDir == "" {
+		return errors.New("No local working directory specified.")
 	}
 
 	if _, err := os.Stat(c.LocalWorkingDir); err != nil {
@@ -103,12 +113,12 @@ func (c *DockerDeployClient) findLocalArtifact() error {
 }
 
 func (c *DockerDeployClient) unzipArtifact() error {
-	output, err := c.executeCommand("which unzip")
+	output, err := c.executeCommand("which unzip", false)
 	if err != nil {
 		return errors.New(fmt.Sprintf("Unzip not installed. %v", output))
 	}
 
-	output, err = c.executeCommand(fmt.Sprintf("cd %v && unzip -o %v && rm %v", c.RemoteWorkingDir, path.Base(c.LocalArtifact), path.Base(c.LocalArtifact)))
+	output, err = c.executeCommand(fmt.Sprintf("cd %v && unzip -o %v && rm %v", c.RemoteWorkingDir, path.Base(c.LocalArtifact), path.Base(c.LocalArtifact)), false)
 	if err != nil {
 		return errors.New(fmt.Sprintf("Could not unzip artifact: %v %v", err.Error(), output))
 	}
@@ -149,10 +159,57 @@ func (c *DockerDeployClient) copyFile(source string, target string) error {
 }
 
 func (c *DockerDeployClient) prepareRemoteWorkdir() error {
+	if c.RemoteWorkingDir == "" {
+		return errors.New("No remote working directory specified.")
+	}
+
 	command := fmt.Sprintf("mkdir -p %s && cd %s && pwd && rm -rf *", c.RemoteWorkingDir, c.RemoteWorkingDir)
-	_, err := c.executeCommand(command)
+	_, err := c.executeCommand(command, false)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func (c *DockerDeployClient) checkDockerInstallation() error {
+	output, err := c.executeCommand("which docker", false)
+	if err != nil {
+		return errors.New(fmt.Sprintf("Docker not installed. %v", output))
+	}
+	output, err = c.executeCommand("which docker-compose", false)
+	if err != nil {
+		return errors.New(fmt.Sprintf("Docker Compose not installed. %v", output))
+	}
+	if c.ComposeFile == "" {
+		return errors.New("No compose file specified.")
+	}
+	if c.ProjectName == "" {
+		return errors.New("No project name specified.")
+	}
+	return nil
+}
+
+func (c *DockerDeployClient) stopComposition() error {
+	_, err := c.executeCommand(fmt.Sprintf("cd %v && sudo -S docker-compose -p %v -f %v stop", c.RemoteWorkingDir, c.ProjectName, c.ComposeFile), true)
+	return err
+}
+
+func (c *DockerDeployClient) removeComposition() error {
+	var err error = nil
+	if c.ClearVolumes {
+		_, err = c.executeCommand(fmt.Sprintf("cd %v && sudo -S docker-compose -p %v -f %v rm -v --force", c.RemoteWorkingDir, c.ProjectName, c.ComposeFile), true)
+	} else {
+		_, err = c.executeCommand(fmt.Sprintf("cd %v && sudo -S docker-compose -p %v -f %v rm --force", c.RemoteWorkingDir, c.ProjectName, c.ComposeFile), true)
+	}
+	return err
+}
+
+func (c *DockerDeployClient) buildComposition() error {
+	_, err := c.executeCommand(fmt.Sprintf("cd %v && sudo -S docker-compose -p %v -f %v build", c.RemoteWorkingDir, c.ProjectName, c.ComposeFile), true)
+	return err
+}
+
+func (c *DockerDeployClient) runComposition() error {
+	_, err := c.executeCommand(fmt.Sprintf("cd %v && sudo -S docker-compose -p %v -f %v up -d", c.RemoteWorkingDir, c.ProjectName, c.ComposeFile), true)
+	return err
 }

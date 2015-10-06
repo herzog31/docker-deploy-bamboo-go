@@ -21,6 +21,7 @@ func main() {
 	flag.StringVar(&c.LocalWorkingDir, "localWorkingDir", "", "Absolute or relative path to local working directory, where the build artifact is stored")
 	flag.StringVar(&c.LocalArtifact, "artifact", "", "Relative or absolute path to zip file that contains the composition")
 	flag.IntVar(&c.ServiceDiscoveryPort, "serviceDiscoveryPort", 8080, "Port for access to the service discovery API")
+	flag.BoolVar(&c.ClearVolumes, "clearVolumes", false, "Set true to clear container volumes in CLEAR and REMOVE commands")
 	flag.Parse()
 
 	var err error
@@ -42,14 +43,24 @@ func main() {
 	if err = c.unzipArtifact(); err != nil {
 		log.Fatal(err)
 	}
-
-	log.Print("Test...")
+	if err = c.checkDockerInstallation(); err != nil {
+		log.Fatal(err)
+	}
+	if err = c.stopComposition(); err != nil {
+		log.Fatal(err)
+	}
+	if err = c.removeComposition(); err != nil {
+		log.Fatal(err)
+	}
+	if err = c.buildComposition(); err != nil {
+		log.Fatal(err)
+	}
+	if err = c.runComposition(); err != nil {
+		log.Fatal(err)
+	}
 
 }
 
-// TODO(mjb): Check if docker & docker-compose installed (which)
-// TODO(mjb): Compose stop, clear
-// TODO(mjb): Compose build, run
 // TODO(mjb): Test, Service Discovery
 // TODO(mjb): Remove working dir, cleanup, disconnect
 // TODO(mjb): Travis Build
