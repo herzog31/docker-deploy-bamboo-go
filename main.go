@@ -17,8 +17,8 @@ func main() {
 	flag.StringVar(&c.ProjectName, "projectName", "", "Project name of Docker composition")
 	flag.StringVar(&c.ComposeFile, "composeFile", "docker-compose.yml", "Name of Docker Compose file")
 	flag.IntVar(&c.StartTime, "startTime", 10, "Time in seconds the deployment scripts waits for the containers to start")
-	flag.StringVar(&c.RemoteWorkingDir, "remoteWorkingDir", "", "Remote working directory, where the build artifact is copied and executed")
-	flag.StringVar(&c.LocalWorkingDir, "localWorkingDir", "", "Local working directory, where the build artifact is stored")
+	flag.StringVar(&c.RemoteWorkingDir, "remoteWorkingDir", "", "Absolute path of remote working directory, where the build artifact is copied and executed")
+	flag.StringVar(&c.LocalWorkingDir, "localWorkingDir", "", "Absolute or relative path to local working directory, where the build artifact is stored")
 	flag.StringVar(&c.LocalArtifact, "artifact", "", "Relative or absolute path to zip file that contains the composition")
 	flag.Parse()
 
@@ -31,6 +31,9 @@ func main() {
 	if err = c.connect(); err != nil {
 		log.Fatal(err)
 	}
+	if err = c.prepareRemoteWorkdir(); err != nil {
+		log.Fatal(err)
+	}
 	if err = c.disconnect(); err != nil {
 		log.Fatal(err)
 	}
@@ -39,7 +42,6 @@ func main() {
 
 }
 
-// TODO(mjb): Make sure folder exist, change folder, Clean working directory
 // TODO(mjb): Copy, unzip, delete artifact
 // TODO(mjb): Compose stop, clear
 // TODO(mjb): Compose build, run

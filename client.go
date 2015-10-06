@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"golang.org/x/crypto/ssh"
-	//"log"
+	"log"
 	"os"
 	"path"
 )
@@ -97,4 +97,14 @@ func (c *DockerDeployClient) findLocalArtifact() error {
 		}
 	}
 	return errors.New(fmt.Sprintf("Could not find local artifact in working directory %v", c.LocalWorkingDir))
+}
+
+func (c *DockerDeployClient) prepareRemoteWorkdir() error {
+	command := fmt.Sprintf("mkdir -p %s && cd %s && pwd && rm -rf *", c.RemoteWorkingDir, c.RemoteWorkingDir)
+	output, err := c.executeCommand(command)
+	if err != nil {
+		return err
+	}
+	log.Print(output)
+	return nil
 }
