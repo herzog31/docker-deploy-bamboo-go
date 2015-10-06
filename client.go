@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"golang.org/x/crypto/ssh"
-	"log"
+	//"log"
 	"os"
 	"path"
 )
@@ -62,6 +62,16 @@ func (c *DockerDeployClient) executeCommand(command string) (string, error) {
 }
 
 func (c *DockerDeployClient) findLocalArtifact() error {
+	if c.LocalArtifact != "" {
+		if _, err := os.Stat(c.LocalArtifact); err != nil {
+			return errors.New(fmt.Sprintf("Could not find artifact at %v.", c.LocalArtifact))
+		}
+		if path.Ext(c.LocalArtifact) != ".zip" {
+			return errors.New(fmt.Sprintf("Given artifact %v is no zip file.", c.LocalArtifact))
+		}
+		return nil
+	}
+
 	if _, err := os.Stat(c.LocalWorkingDir); err != nil {
 		return errors.New(fmt.Sprintf("Local working directory \"%v\" does not exist!", c.LocalWorkingDir))
 	}
@@ -82,7 +92,6 @@ func (c *DockerDeployClient) findLocalArtifact() error {
 			fpath := path.Join(c.LocalWorkingDir, file.Name())
 			if path.Ext(fpath) == ".zip" {
 				c.LocalArtifact = fpath
-				log.Printf("Local artifact found: %v", fpath)
 				return nil
 			}
 		}

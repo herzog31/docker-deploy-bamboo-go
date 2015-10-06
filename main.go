@@ -19,6 +19,7 @@ func main() {
 	flag.IntVar(&c.StartTime, "startTime", 10, "Time in seconds the deployment scripts waits for the containers to start")
 	flag.StringVar(&c.RemoteWorkingDir, "remoteWorkingDir", "", "Remote working directory, where the build artifact is copied and executed")
 	flag.StringVar(&c.LocalWorkingDir, "localWorkingDir", "", "Local working directory, where the build artifact is stored")
+	flag.StringVar(&c.LocalArtifact, "artifact", "", "Relative or absolute path to zip file that contains the composition")
 	flag.Parse()
 
 	var err error
@@ -26,6 +27,7 @@ func main() {
 	if err = c.findLocalArtifact(); err != nil {
 		log.Fatal(err)
 	}
+	log.Printf("Local artifact found: %v", c.LocalArtifact)
 	if err = c.connect(); err != nil {
 		log.Fatal(err)
 	}
