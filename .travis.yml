@@ -6,6 +6,8 @@ env:
   global:
     - "PATH=/home/travis/gopath/bin:$PATH" 
     - OS_ARCH="darwin/amd64 linux/amd64 linux/arm windows/amd64"
+    - GO_EXTLINK_ENABLED=0
+    - CGO_ENABLED=0
 before_install:
   - go get github.com/mitchellh/gox
 after_success:
