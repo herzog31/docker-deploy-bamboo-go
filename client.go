@@ -168,6 +168,9 @@ func (c *DockerDeployClient) prepareRemoteWorkdir() error {
 		return errors.New("No remote working directory specified.")
 	}
 
+	subfolder := strings.TrimSuffix(path.Base(c.LocalArtifact), path.Ext(c.LocalArtifact))
+	c.RemoteWorkingDir = path.Join(c.RemoteWorkingDir, subfolder)
+
 	command := fmt.Sprintf("mkdir -p %s && cd %s && pwd && rm -rf *", c.RemoteWorkingDir, c.RemoteWorkingDir)
 	_, err := c.executeCommand(command, false)
 	if err != nil {
